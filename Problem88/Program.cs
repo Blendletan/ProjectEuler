@@ -6,35 +6,24 @@ namespace Problem88
         static void Main(string[] args)
         {
             Int32 maxK = Int32.Parse(Console.ReadLine());
-            SolveAll(maxK);
+            Solve(maxK);
         }
-        static void SolveAll(Int32 maxK)
+        static void Solve(Int32 maxK)
         {
-            var minProdSum = new Int32[maxK + 1];
-            for (Int32 i = 0; i <= maxK; i++)
-            {
-                minProdSum[i] = -1;
-            }
             Int32 maxN = 1000 + maxK;
             if (maxK < 50000)
             {
                 maxN = maxK + 10000;
             }
-            var factors = new List<Int32>[maxN + 1];
-            for (Int32 i = 0; i <= maxN; i++)
+            var divisorInfo = new DivisorInfo(maxN);
+            var minProdSum = new Int32[maxK + 1];
+            for (Int32 i = 0; i <= maxK; i++)
             {
-                factors[i] = new List<Int32>();
-            }
-            for (Int32 divisor = 2; divisor <= maxK; divisor++)
-            {
-                for (Int32 composite = divisor; composite <= maxN; composite+=divisor)
-                {
-                    factors[composite].Add(divisor);
-                }
+                minProdSum[i] = -1;
             }
             for (Int32 i = 2; i <= maxN; i++)
             {
-                Solve(i, i, i, 0, 2, factors, maxN, maxK, minProdSum);
+                ProductSumNumber(i, i, i,2, 0, divisorInfo.divisorList, minProdSum);
             }
             var used = new bool[maxN + 1];
             foreach (var v in minProdSum)
@@ -54,49 +43,86 @@ namespace Problem88
             }
             Console.WriteLine(output);
         }
-
-        static void Solve(Int32 start, Int32 prod, Int32 sum, Int32 size, Int32 prev,List <Int32>[] factors, Int32 maxN,Int32 maxK,Int32[] minProdSum)
+        static void UpdateProdSum(Int32 n, Int32 numberOfSteps, Int32[] minProdSum)
         {
-            if (prod == 1)
+            if (numberOfSteps > minProdSum.Length - 1)
             {
-                if (size == 1)
-                {
-                    return;
-                }
-                if (sum == 0)
-                {
-                    if (start < minProdSum[size] || minProdSum[size] == -1)
-                    {
-                        minProdSum[size] = start;
-                    }
-                }
-                else if (size + sum <= maxK)
-                {
-                    if (minProdSum[size + sum] == -1)
-                    {
-                        minProdSum[size + sum] = start;
-                    }
-                    else
-                    {
-                        minProdSum[size + sum] = Math.Min(minProdSum[size + sum], start);
-                    }
-                }
                 return;
             }
-            if (size == maxN || size >= start / 2 + 1) return;
-
-            foreach (var f in factors[prod])
+            if (minProdSum[numberOfSteps] == -1)
             {
-                if (f < prev)
+                minProdSum[numberOfSteps] = n;
+            }
+            else if (n < minProdSum[numberOfSteps])
+            {
+                minProdSum[numberOfSteps] = n;
+            }
+            return;
+        }
+        static void ProductSumNumber(Int32 originalInput, Int32 prod, Int32 sum, Int32 previousDivisor,Int32 numberOfSteps, List<(Int32, Int32)>[] divisorList, Int32[] minProdSum)
+        {
+            if (numberOfSteps > originalInput / 2 + 1)
+            {
+                return;
+            }
+            if (numberOfSteps > minProdSum.Length - 1)
+            {
+                return;
+            }
+            if (sum <= 0)
+            {
+                return;
+            }
+            if (numberOfSteps > 0)
+            {
+                if (prod == sum)
                 {
-                    continue;
+                    UpdateProdSum(originalInput, numberOfSteps + 1, minProdSum);
+                    return;
                 }
-                if (f > sum)
+                if (prod == 1)
+                {
+                    UpdateProdSum(originalInput, numberOfSteps + sum, minProdSum);
+                    return;
+                }
+            }
+            numberOfSteps++;
+            foreach (var v in divisorList[prod])
+            {
+                var divisor = v.Item1;
+                if (divisor > sum)
                 {
                     break;
                 }
-                Solve(start, prod / f, sum - f, size + 1, f,factors,maxN,maxK,minProdSum);
+                if (divisor < previousDivisor)
+                {
+                    continue;
+                }
+                ProductSumNumber(originalInput, v.Item2, sum - divisor, divisor,numberOfSteps, divisorList, minProdSum);
             }
+            return;
+        }
+    }
+    internal class DivisorInfo
+    {
+        public readonly List<(Int32, Int32)>[] divisorList;
+        public DivisorInfo(Int32 max)
+        {
+            divisorList = new List<(Int32, Int32)>[max + 1];
+            for (Int32 i = 0; i <= max; i++)
+            {
+                divisorList[i] = new List<(Int32, Int32)>();
+                divisorList[i].Add((i, 1));
+            }
+            Int32 maxToSearch = (Int32)Math.Sqrt(max);
+            for (Int32 divisor = 2; divisor <= maxToSearch; divisor++)
+            {
+                for (Int32 composite = divisor * divisor; composite <= max; composite += divisor)
+                {
+                    divisorList[composite].Add((divisor, composite / divisor));
+                }
+            }
+            return;
         }
     }
 }
