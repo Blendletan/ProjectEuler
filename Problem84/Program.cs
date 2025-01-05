@@ -1,4 +1,6 @@
-﻿namespace Problem84
+﻿using System.Threading.Channels;
+
+namespace Problem84
 {
     internal class Program
     {
@@ -7,6 +9,34 @@
             string[] inputs = Console.ReadLine().Split();
             Int32 numberOfSidesOnDice = Int32.Parse(inputs[0]);
             Int32 numberOfPlacesToReport = Int32.Parse(inputs[1]);
+            double[] dice = new double[numberOfSidesOnDice + 1];
+            for (Int32 i = 1; i <= numberOfSidesOnDice; i++)
+            {
+                dice[i] = 1.0 / (double)numberOfSidesOnDice;
+            }
+            var twoDice = Markov.Convolution(dice, dice);
+            double[] stateVector = new double[40];
+            stateVector[0] = 1;
+            var transitionMatrix = GenerateTransitionMatrix(twoDice);
+            Int32 numberOfTrials = 200000;
+            for (Int32 i = 0; i < numberOfTrials; i++)
+            {
+                stateVector = Markov.Multiply(transitionMatrix, stateVector);
+            }
+            var outcome = new List<(Int32, double)>();
+            for (Int32 i = 0; i < 40; i++)
+            {
+                outcome.Add((i, stateVector[i]));
+            }
+            outcome.Sort((x, y) => x.Item2.CompareTo(y.Item2));
+            outcome.Reverse();
+            for (Int32 i = 0; i < numberOfPlacesToReport; i++)
+            {
+                Console.Write($"{WriteSquareName(outcome[i].Item1)} ");
+            }
+        }
+        static double[,] GenerateTransitionMatrix(double[] diceRoll)
+        {
             const Int32 GO = 0;
             const Int32 JAIL = 10;
             const Int32 GOTOJAIL = 30;
@@ -26,20 +56,12 @@
             const Int32 CHANCE2 = 22;
             const Int32 CHANCE3 = 36;
             const double ChestTransition = 1.0 / 16.0;
-            double[] dice = new double[numberOfSidesOnDice + 1];
-            for (Int32 i = 1; i <= numberOfSidesOnDice; i++)
-            {
-                dice[i] = 1.0 / (double)numberOfSidesOnDice;
-            }
-            var twoDice = Markov.Convolution(dice, dice);
-            double[] stateVector = new double[40];
-            stateVector[0] = 1;
             double[,] transitionMatrix = new double[40, 40];
             for (Int32 startPosition = 0; startPosition < 40; startPosition++)
             {
-                for (Int32 diceOutcome = 0; diceOutcome < twoDice.Length; diceOutcome++)
+                for (Int32 diceOutcome = 0; diceOutcome < diceRoll.Length; diceOutcome++)
                 {
-                    double diceProbability = twoDice[diceOutcome];
+                    double diceProbability = diceRoll[diceOutcome];
                     Int32 nextSquare = (diceOutcome + startPosition) % 40;
                     if (nextSquare != GOTOJAIL && nextSquare != CHEST1 && nextSquare != CHEST2 && nextSquare != CHEST3 && nextSquare != CHANCE1 && nextSquare != CHANCE2 && nextSquare != CHANCE3)
                     {
@@ -106,23 +128,7 @@
                     }
                 }
             }
-            Int32 numberOfTrials = 200000;
-            var squaredMatrix = Markov.MatrixMultiplication(transitionMatrix, transitionMatrix);
-            for (Int32 i = 0; i < numberOfTrials; i++)
-            {
-                stateVector = Markov.Multiply(squaredMatrix, stateVector);
-            }
-            var outcome = new List<(Int32, double)>();
-            for (Int32 i = 0; i < 40; i++)
-            {
-                outcome.Add((i, stateVector[i]));
-            }
-            outcome.Sort((x, y) => x.Item2.CompareTo(y.Item2));
-            outcome.Reverse();
-            for (Int32 i = 0; i < numberOfPlacesToReport; i++)
-            {
-                Console.Write($"{WriteSquareName(outcome[i].Item1)} ");
-            }
+            return transitionMatrix;
         }
         static string WriteSquareName(Int32 square)
         {
